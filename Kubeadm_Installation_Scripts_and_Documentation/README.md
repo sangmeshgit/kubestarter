@@ -60,7 +60,7 @@ This guide outlines the steps needed to set up a Kubernetes cluster using `kubea
 
 
 ## Execute on "Master" Node
-    ```bash
+```bash
     #!/bin/bash
     set -e
 
@@ -115,7 +115,7 @@ This guide outlines the steps needed to set up a Kubernetes cluster using `kubea
 
     echo "✅ Master node setup complete!"
     echo "⚠️ Save the kubeadm join command shown above for worker nodes."
-    ```
+```
 ## Execute ONLY on the "Master" Node
 
 1. **Initialize the Cluster**:
