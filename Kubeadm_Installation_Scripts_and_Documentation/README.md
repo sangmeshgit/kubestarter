@@ -116,33 +116,52 @@ This guide outlines the steps needed to set up a Kubernetes cluster using `kubea
     echo "✅ Master node setup complete!"
     echo "⚠️ Save the kubeadm join command shown above for worker nodes."
 ```
-## Execute ONLY on the "Master" Node
+## Execute on the "worker" Node
+```bash
+    #!/bin/bash
+    set -e
 
-1. **Initialize the Cluster**:
-    ```bash
-    sudo kubeadm init
-    ```
+    # Update system
+    sudo apt update && sudo apt upgrade -y
 
-2. **Set Up Local kubeconfig**:
-    ```bash
-    mkdir -p "$HOME"/.kube
-    sudo cp -i /etc/kubernetes/admin.conf "$HOME"/.kube/config
-    sudo chown "$(id -u)":"$(id -g)" "$HOME"/.kube/config
-    ```
+    # Disable swap
+    sudo swapoff -a
+    sudo sed -i '/ swap / s/^/#/' /etc/fstab
 
-3. **Install a Network Plugin (Calico)**:
-    ```bash
-    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.0/manifests/calico.yaml
-    ```
+    # Kernel modules
+    sudo modprobe overlay
+    sudo modprobe br_netfilter
 
-4. **Generate Join Command**:
-    ```bash
-    kubeadm token create --print-join-command
-    ```
+    # Networking settings
+    cat <<EOF | sudo tee /etc/sysctl.d/kubernetes.conf
+    net.bridge.bridge-nf-call-iptables  = 1
+    net.ipv4.ip_forward                 = 1
+    net.bridge.bridge-nf-call-ip6tables = 1
+    EOF
+    sudo sysctl --system
 
-> Copy this generated token for next command.
+    # Install containerd
+    sudo apt install -y containerd
+    sudo mkdir -p /etc/containerd
+    containerd config default | sudo tee /etc/containerd/config.toml
+    sudo systemctl restart containerd
+    sudo systemctl enable containerd
 
----
+    # Add Kubernetes repo
+    sudo apt install -y apt-transport-https ca-certificates curl
+    sudo curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | \
+      sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes.gpg
+    echo "deb https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /" | \
+      sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+    # Install kubeadm, kubelet, kubectl
+    sudo apt update
+    sudo apt install -y kubelet kubeadm kubectl
+    sudo apt-mark hold kubelet kubeadm kubectl
+
+    echo "✅ Worker node setup complete!"
+    echo "⚠️ Run the kubeadm join command provided by the master node to join the cluster."
+```
 
 ## Execute on ALL of your Worker Nodes
 
